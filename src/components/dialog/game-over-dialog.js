@@ -1,0 +1,67 @@
+import { getCanvas, on } from "kontra";
+import { GameState, GameManager } from "../../managers/game-manager";
+import { EVENT } from "../../constants/event";
+import { CustomButton, OverlayDialog } from "./shared-ui";
+import { Templar } from "../sprites/templar";
+import { LOCAL_STORAGE_KEY } from "../../constants/localstorage";
+export class GameOverDialog extends OverlayDialog {
+    constructor() {
+        const { width: w, height: h } = getCanvas();
+        super(300, 200);
+        Object.defineProperty(this, "rBtn", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: void 0
+        }); // restart button
+        Object.defineProperty(this, "sBtn", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: void 0
+        }); // share button
+        Object.defineProperty(this, "isShown", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: false
+        });
+        this.tT.text = "游戏结束";
+        this.tT.y -= 14;
+        this.dT.text = "";
+        this.dT.y -= 14;
+        this.sBtn = new CustomButton(w / 2, h / 2 + 36, "分享");
+        this.rBtn = new CustomButton(w / 2, h / 2 + 70, "重新开始");
+        this.addChild([
+            this.sBtn,
+            this.rBtn,
+            new Templar({ x: w / 2 - 32, y: h / 2 - 224, condition: "d" }),
+        ]);
+        on(EVENT.GAME_OVER, this.show.bind(this));
+    }
+    show() {
+        if (this.isShown)
+            return;
+        this.isShown = true;
+        const gm = GameManager.gI();
+        let bestScore = localStorage.getItem(LOCAL_STORAGE_KEY.BEST_SCORE);
+        if (gm.move > parseInt(bestScore ?? "0")) {
+            bestScore = `${gm.move}`;
+            localStorage.setItem(LOCAL_STORAGE_KEY.BEST_SCORE, bestScore);
+        }
+        const content = `作为${gm.cls}存活了${gm.move}回合`;
+        this.dT.text = `${content}!\n最佳分数：${bestScore}`;
+        this.rBtn.bindClick(() => location.reload());
+        localStorage.setItem(LOCAL_STORAGE_KEY.PLAYED, "t");
+        this.sBtn.bindClick(() => {
+            const url = `https://x.com/intent/post?text=${encodeURI(`${content} 在圣殿骑士的最终决战中，由 @leokuo0724 制作。在此游玩：`)}&url=https://leokuo0724.github.io/Templar-s-Final-Stand`;
+            open(url, "_blank");
+        });
+    }
+    render() {
+        const gm = GameManager.gI();
+        if (gm.state !== GameState.GAME_OVER)
+            return;
+        super.render();
+    }
+}
